@@ -1,0 +1,23 @@
+{
+  "name": "webstlink",
+  "version": "1.0.0",
+  "description": "webstlink is a port of pystlink, using the WebUSB as a backend.",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"No test specified\" && exit 0"
+  },
+  "keywords": [
+    "stm32",
+    "stlink",
+    "flash",
+    "programming",
+    "embedded"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rmsaad/webstlink.git"
+  }
+}
