@@ -86,8 +86,8 @@ class Flash {
         // Lock first. Double unlock results in error!
         await this._stlink.set_debugreg32(FLASH_CR_REG, FLASH_CR_LOCK_BIT);
 
-        let cr;
-        cr = await this._stlink.get_debugreg32(FLASH_CR_REG);
+        await async_sleep(0.1);
+        let cr = await this._stlink.get_debugreg32(FLASH_CR_REG);
 
         if (cr & FLASH_CR_LOCK_BIT) {
             // Unlock keys
