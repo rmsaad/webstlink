@@ -358,5 +358,14 @@ export default class Stlink {
         view.setUint32(6, data.length, true);
         return this._connector.xfer(cmd, {"data": data});
     }
+
+    set_nrst(action) {
+      let cmd = new ArrayBuffer(10);
+      let view = new DataView(cmd);
+      view.setUint8(0, STLINK_DEBUG_COMMAND);
+      view.setUint8(1, STLINK_DEBUG_APIV2_DRIVE_NRST);
+      view.setUint8(2, action)
+      this._connector.xfer(cmd, {"rx_len": 2});
+    }
 }
 

@@ -34,12 +34,14 @@ const DHCSR_KEY = 0xa05f0000;
 const DHCSR_DEBUGEN_BIT = 0x00000001;
 const DHCSR_HALT_BIT = 0x00000002;
 const DHCSR_STEP_BIT = 0x00000004;
-const DHCSR_STATUS_HALT_BIT = 0x00020000;
+const DHCSR_STATUS_ENABLE_BIT = DHCSR_DEBUGEN_BIT << 16
+const DHCSR_STATUS_HALT_BIT   = DHCSR_HALT_BIT    << 16
 const DHCSR_STATUS_LOCKUP_BIT = 0x00080000;
 const DHCSR_DEBUGDIS = DHCSR_KEY;
 const DHCSR_DEBUGEN = DHCSR_KEY | DHCSR_DEBUGEN_BIT;
 const DHCSR_HALT = DHCSR_KEY | DHCSR_DEBUGEN_BIT | DHCSR_HALT_BIT;
 const DHCSR_STEP = DHCSR_KEY | DHCSR_DEBUGEN_BIT | DHCSR_STEP_BIT;
+const DHCSR_HALTED = DHCSR_HALT_BIT | DHCSR_DEBUGEN_BIT | DHCSR_STATUS_HALT_BIT | DHCSR_STATUS_ENABLE_BIT
 
 const DEMCR_RUN_AFTER_RESET = 0x00000000;
 const DEMCR_HALT_AFTER_RESET = 0x00000001;
@@ -195,16 +197,34 @@ class Stm32 {
 
     async core_reset_halt() {
         this._dbg.debug("Stm32.core_reset_halt()");
-        await this._stlink.set_debugreg32(DHCSR_REG, DHCSR_HALT);
         await this._stlink.set_debugreg32(DEMCR_REG, DEMCR_HALT_AFTER_RESET);
         await this._stlink.set_debugreg32(AIRCR_REG, AIRCR_SYSRESETREQ);
+        await this.core_halt();
         await this._stlink.get_debugreg32(AIRCR_REG);
     }
 
-    async core_halt() {
-        this._dbg.debug("Stm32.core_halt()");
-        await this._stlink.set_debugreg32(DHCSR_REG, DHCSR_HALT);
+    async core_hard_reset_halt() {
+        this._dbg.debug("Stm32.core_hard_reset_halt()");
+        await this._stlink.set_nrst(0);
+        await this._stlink.set_debugreg32(DEMCR_REG, DEMCR_HALT_AFTER_RESET);
+        await this._stlink.set_nrst(1);
+        await this.core_halt();
     }
+
+    async core_halt() {
+      this._dbg.debug("Stm32.core_halt()");
+      let i = 0;
+      while ((await this._stlink.get_debugreg32(DHCSR_REG) & DHCSR_HALTED) !== DHCSR_HALTED) {
+          while (true) {
+              await this._stlink.set_debugreg32(DHCSR_REG, DHCSR_HALT);
+              i++;
+              if ((i & 0xff) === 0) {
+                  break;
+              }
+          }
+      }
+      this._dbg.debug(`Halted after ${i} transactions`);
+  }
 
     async core_step() {
         this._dbg.debug("Stm32.core_step()");

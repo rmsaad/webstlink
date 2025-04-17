@@ -77,12 +77,13 @@ class TargetCache {
 }
 
 export default class WebStlink {
-    constructor(dbg = null) {
+    constructor(dbg = null, hard = false) {
         this._stlink = null;
         this._driver = null;
         this._dbg = dbg;
         this._mcu = null;
         this._mutex = new Mutex;
+        this._hard = hard;
         this._callbacks = {
             inspect: [],
             halted: [],
@@ -218,6 +219,12 @@ export default class WebStlink {
     }
 
     async find_mcus_by_core() {
+        if (this._hard){
+          this._core.core_hard_reset_halt();
+          await new Promise(f => setTimeout(f, 100));
+        }else{
+          this._core.core_halt();
+        }
         let cpuid = await this._stlink.get_debugreg32(CPUID_REG);
         if (cpuid == 0) {
             throw new libstlink.exceptions.Exception("Not connected to CPU");
@@ -364,6 +371,7 @@ export default class WebStlink {
         }
         await this._mutex.lock();
         try {
+            this._core = new libstlink.drivers.Stm32(this._stlink, this._dbg);
             await this.find_mcus_by_core();
             this._dbg.info("CORE:   " + this._mcus_by_core.core);
             await this.find_mcus_by_devid();
