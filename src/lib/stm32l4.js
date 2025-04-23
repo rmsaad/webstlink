@@ -14,6 +14,7 @@ import {
 
 const FLASH_REG_BASE = 0x40022000;
 const FLASH_KEYR_REG = FLASH_REG_BASE + 0x08;
+const FLASH_OPTKEYR_REG = FLASH_REG_BASE + 0x0C;
 const FLASH_SR_REG   = FLASH_REG_BASE + 0x10;
 const FLASH_CR_REG   = FLASH_REG_BASE + 0x14;
 
@@ -24,7 +25,9 @@ const FLASH_CR_PNB_BITINDEX = 3;
 const FLASH_CR_BKER_BIT     = 1 << 11;
 const FLASH_CR_MER2_BIT     = 1 << 15;
 const FLASH_CR_STRT_BIT     = 1 << 16;
+const FLASH_CR_OPT_STRT_BIT = 1 << 17;
 const FLASH_CR_FSTPG_BIT    = 1 << 18;
+const FLASH_CR_OBL_LAUNCH_BIT = 1 << 27;
 const FLASH_CR_OPTLOCK_BIT  = 1 << 30;
 const FLASH_CR_LOCK_BIT     = 1 << 31;
 
@@ -254,6 +257,31 @@ class Stm32L4 extends Stm32 {
         }
         await flash.wait_busy(0.001);
         this._dbg.bargraph_done();
+        await flash.lock();
+    }
+
+    async set_rdp(level) {
+
+        let flash = new Flash(this, this._stlink, this._dbg);
+        await flash.init();
+        await flash.unlock();
+
+        await this._stlink.set_debugreg32(FLASH_OPTKEYR_REG, 0x08192a3b);
+        await this._stlink.set_debugreg32(FLASH_OPTKEYR_REG, 0x4c5d6e7f);
+
+        let optr = await this._stlink.get_debugreg32(FLASH_OPTR_REG);
+
+        if ((optr & 0xFF) === level) {
+            this._dbg.debug("RDP already at correct level");
+            return;
+        }
+
+        optr = (optr & ~0xFF) | level;
+        await this._stlink.set_debugreg32(FLASH_OPTR_REG, optr);
+
+        await this._stlink.set_debugreg32(FLASH_CR_REG, FLASH_CR_OPT_STRT_BIT);
+        await flash.wait_busy(1);
+        await this._stlink.set_debugreg32(FLASH_CR_REG, FLASH_CR_OBL_LAUNCH_BIT);
         await flash.lock();
     }
 }

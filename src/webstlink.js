@@ -665,4 +665,13 @@ export default class WebStlink {
             this._mutex.unlock();
         }
     }
+
+    async set_rdp(level) {
+        await this._mutex.lock();
+        try {
+            return await this._driver.set_rdp(level);
+        } finally {
+            this._mutex.unlock();
+        }
+    }
 }
